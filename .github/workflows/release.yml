@@ -1,0 +1,164 @@
+name: Create Release with Multi-Platform Libraries
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create release for'
+        required: true
+        type: string
+
+jobs:
+  # Build all artifacts using the existing workflow
+  build-artifacts:
+    name: Build Release Artifacts
+    uses: ./.github/workflows/build-multiplatform-libs.yml
+    with:
+      build_type: Release
+
+  # Attach artifacts to the GitHub release
+  attach-to-release:
+    name: Attach Artifacts to Release
+    runs-on: ubuntu-latest
+    needs: build-artifacts
+    if: always() && needs.build-artifacts.result == 'success'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get Release Info
+        id: release_info
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "release_id=${{ github.event.release.id }}" >> $GITHUB_OUTPUT
+            echo "upload_url=${{ github.event.release.upload_url }}" >> $GITHUB_OUTPUT
+          else
+            # For workflow_dispatch, get the release by tag
+            TAG="${{ github.event.inputs.tag }}"
+            echo "tag_name=$TAG" >> $GITHUB_OUTPUT
+            
+            # Get release info via GitHub API
+            RELEASE_INFO=$(gh api repos/${{ github.repository }}/releases/tags/$TAG)
+            echo "release_id=$(echo $RELEASE_INFO | jq -r .id)" >> $GITHUB_OUTPUT
+            echo "upload_url=$(echo $RELEASE_INFO | jq -r .upload_url)" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Release Assets
+        run: |
+          mkdir -p release-assets
+          cd artifacts
+
+          # Process individual platform artifacts
+          for artifact_dir in yoga-*/; do
+            if [ -d "$artifact_dir" ]; then
+              artifact_name=${artifact_dir%/}
+              platform_info=$(echo "$artifact_name" | sed 's/yoga-//')
+              
+              if [ -f "$artifact_dir"/*.tar.gz ]; then
+                # Rename for cleaner release asset names
+                cp "$artifact_dir"/*.tar.gz "../release-assets/yoga-${{ steps.release_info.outputs.tag_name }}-${platform_info}.tar.gz"
+              fi
+            fi
+          done
+
+          # Process the complete bundle if it exists
+          if [ -d "yoga-multiplatform-libs-bundle" ] && [ -f "yoga-multiplatform-libs-bundle/yoga-multiplatform-libs.tar.gz" ]; then
+            cp "yoga-multiplatform-libs-bundle/yoga-multiplatform-libs.tar.gz" "../release-assets/yoga-${{ steps.release_info.outputs.tag_name }}-all-platforms.tar.gz"
+          fi
+
+          cd ../release-assets
+          echo "Release assets prepared:"
+          ls -la
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## Yoga Layout Engine ${{ steps.release_info.outputs.tag_name }}
+
+          ### Pre-built Libraries
+
+          This release includes pre-built static and shared libraries for multiple platforms:
+
+          **Individual Platform Downloads:**
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-darwin-x86_64-static.tar.gz` - macOS x86_64 Static Library
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-darwin-x86_64-shared.tar.gz` - macOS x86_64 Dynamic Library  
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-darwin-arm64-static.tar.gz` - macOS ARM64 Static Library
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-darwin-arm64-shared.tar.gz` - macOS ARM64 Dynamic Library
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-linux-x86_64-static.tar.gz` - Linux x86_64 Static Library
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-linux-x86_64-shared.tar.gz` - Linux x86_64 Shared Library
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-linux-aarch64-static.tar.gz` - Linux ARM64 Static Library  
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-linux-aarch64-shared.tar.gz` - Linux ARM64 Shared Library
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-windows-x64-static.tar.gz` - Windows x64 Static Library
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-windows-x64-shared.tar.gz` - Windows x64 Dynamic Library
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-windows-ARM64-static.tar.gz` - Windows ARM64 Static Library
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-windows-ARM64-shared.tar.gz` - Windows ARM64 Dynamic Library
+
+          **Complete Bundle:**
+          - `yoga-${{ steps.release_info.outputs.tag_name }}-all-platforms.tar.gz` - All platforms and architectures in organized structure
+
+          ### Usage
+
+          Each archive contains:
+          - The compiled library (`.a`, `.so`, `.dylib`, `.dll`, `.lib`)
+          - Header files in `include/` directory
+
+          Extract the archive for your target platform and link against the library in your project.
+
+          ### Build Information
+
+          - **Build Type:** Release
+          - **C++ Standard:** C++20
+          - **Compiler Optimizations:** Enabled (-O2/-O3)
+          - **Position Independent Code:** Enabled
+          - **Link Time Optimization:** Enabled (where supported)
+          EOF
+
+          echo "release_notes_file=release_notes.md" >> $GITHUB_OUTPUT
+
+      - name: Upload Individual Platform Assets
+        run: |
+          cd release-assets
+
+          for asset in *.tar.gz; do
+            if [ -f "$asset" ]; then
+              echo "Uploading $asset..."
+              gh release upload "${{ steps.release_info.outputs.tag_name }}" "$asset" --clobber
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Release Notes
+        run: |
+          gh release edit "${{ steps.release_info.outputs.tag_name }}" --notes-file "${{ steps.release_notes.outputs.release_notes_file }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        run: |
+          echo "## 🚀 Release ${{ steps.release_info.outputs.tag_name }} Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Uploaded Assets:" >> $GITHUB_STEP_SUMMARY
+          cd release-assets
+          for asset in *.tar.gz; do
+            if [ -f "$asset" ]; then
+              size=$(du -h "$asset" | cut -f1)
+              echo "- \`$asset\` ($size)" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.release_info.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Download All Assets](https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.tag_name }}/yoga-${{ steps.release_info.outputs.tag_name }}-all-platforms.tar.gz)" >> $GITHUB_STEP_SUMMARY

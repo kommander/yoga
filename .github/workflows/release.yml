@@ -16,7 +16,7 @@ jobs:
     name: Build Release Artifacts
     uses: ./.github/workflows/build-multiplatform-libs.yml
     with:
-      build_type: Release
+      build_type: 'Release'
 
   # Attach artifacts to the GitHub release
   attach-to-release:

@@ -5,6 +5,13 @@ on:
     branches: [main, 'release-*']
   pull_request:
     branches: [main]
+  workflow_call:
+    inputs:
+      build_type:
+        description: 'Build type (Debug or Release)'
+        required: false
+        default: 'Release'
+        type: string
   workflow_dispatch:
     inputs:
       build_type:

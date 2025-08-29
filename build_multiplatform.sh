@@ -55,6 +55,41 @@ clean_output() {
     mkdir -p "$OUTPUT_DIR"
 }
 
+# Get performance optimization flags
+get_performance_flags() {
+    local platform="$1"
+    local arch="$2"
+    
+    # Base performance flags for all platforms
+    local base_flags=""
+    
+    case "$platform" in
+        "darwin"|"linux")
+            case "$arch" in
+                "x86_64")
+                    base_flags="-DCMAKE_C_FLAGS_RELEASE='-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto'"
+                    ;;
+                "arm64"|"aarch64")
+                    base_flags="-DCMAKE_C_FLAGS_RELEASE='-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto'"
+                    ;;
+            esac
+            ;;
+        "windows")
+            # MSVC optimization flags
+            case "$arch" in
+                "x86_64")
+                    base_flags="-DCMAKE_C_FLAGS_RELEASE='/O2 /Ob2 /Oi /Ot /Oy /GL /DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='/O2 /Ob2 /Oi /Ot /Oy /GL /DNDEBUG' -DCMAKE_EXE_LINKER_FLAGS_RELEASE='/LTCG /OPT:REF /OPT:ICF' -DCMAKE_SHARED_LINKER_FLAGS_RELEASE='/LTCG /OPT:REF /OPT:ICF'"
+                    ;;
+                "aarch64")
+                    base_flags="-DCMAKE_C_FLAGS_RELEASE='/O2 /Ob2 /Oi /Ot /GL /DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='/O2 /Ob2 /Oi /Ot /GL /DNDEBUG' -DCMAKE_EXE_LINKER_FLAGS_RELEASE='/LTCG /OPT:REF /OPT:ICF' -DCMAKE_SHARED_LINKER_FLAGS_RELEASE='/LTCG /OPT:REF /OPT:ICF'"
+                    ;;
+            esac
+            ;;
+    esac
+    
+    echo "$base_flags"
+}
+
 # Get toolchain file for cross-compilation
 get_toolchain_args() {
     local platform="$1"
@@ -150,10 +185,12 @@ build_platform() {
     local lib_type_lower=$(echo "$lib_type" | tr '[:upper:]' '[:lower:]')
     local output_subdir="${OUTPUT_DIR}/${platform}/${arch}/${lib_type_lower}"
     local toolchain_args
+    local performance_flags
     local generator
     local lib_ext
     
     toolchain_args=$(get_toolchain_args "$platform" "$arch")
+    performance_flags=$(get_performance_flags "$platform" "$arch")
     generator=$(get_generator "$platform")
     lib_ext=$(get_lib_extension "$platform" "$lib_type")
     
@@ -175,11 +212,12 @@ build_platform() {
     modify_cmake_for_lib_type "$lib_type"
     
     # Configure
-    log_info "Configuring build for ${platform}/${arch}/${lib_type_lower}..."
+    log_info "Configuring build for ${platform}/${arch}/${lib_type_lower} with performance optimizations..."
     eval cmake -S . -B "$build_dir" \
         -G "$generator" \
         -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
         $toolchain_args \
+        $performance_flags \
         -DCMAKE_INSTALL_PREFIX="$output_subdir"
     
     # Build

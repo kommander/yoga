@@ -66,11 +66,19 @@ jobs:
             CMAKE_SOURCE_DIR="."
           fi
 
+          # Set performance optimization flags
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+            PERF_FLAGS="-DCMAKE_C_FLAGS_RELEASE='-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto'"
+          else
+            PERF_FLAGS="-DCMAKE_C_FLAGS_RELEASE='-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto'"
+          fi
+
           cmake -S "$CMAKE_SOURCE_DIR" -B "$BUILD_DIR" \
             -G Ninja \
             -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
             -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \
-            -DCMAKE_SYSTEM_NAME=Darwin
+            -DCMAKE_SYSTEM_NAME=Darwin \
+            $PERF_FLAGS
 
           cmake --build "$BUILD_DIR" --config "$BUILD_TYPE" -j$(sysctl -n hw.ncpu)
 
@@ -154,10 +162,18 @@ jobs:
             CMAKE_SOURCE_DIR="."
           fi
 
+          # Set performance optimization flags
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+            PERF_FLAGS="-DCMAKE_C_FLAGS_RELEASE='-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto'"
+          else
+            PERF_FLAGS="-DCMAKE_C_FLAGS_RELEASE='-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto'"
+          fi
+
           cmake -S "$CMAKE_SOURCE_DIR" -B "$BUILD_DIR" \
             -G Ninja \
             -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-            $TOOLCHAIN_ARGS
+            $TOOLCHAIN_ARGS \
+            $PERF_FLAGS
 
           cmake --build "$BUILD_DIR" --config "$BUILD_TYPE" -j$(nproc)
 
@@ -240,11 +256,19 @@ jobs:
           powershell -Command "(Get-Content yoga\CMakeLists.txt) -replace 'add_library\(yogacore STATIC', 'add_library(yogacore %LIB_TYPE_UPPER%' | Set-Content yoga\CMakeLists.txt"
 
           rem Configure and build
+          rem Set performance optimization flags for Windows
+          if "%ARCH%"=="x64" (
+            set PERF_FLAGS=-DCMAKE_C_FLAGS_RELEASE="/O2 /Ob2 /Oi /Ot /Oy /GL /DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="/O2 /Ob2 /Oi /Ot /Oy /GL /DNDEBUG" -DCMAKE_EXE_LINKER_FLAGS_RELEASE="/LTCG /OPT:REF /OPT:ICF" -DCMAKE_SHARED_LINKER_FLAGS_RELEASE="/LTCG /OPT:REF /OPT:ICF"
+          ) else (
+            set PERF_FLAGS=-DCMAKE_C_FLAGS_RELEASE="/O2 /Ob2 /Oi /Ot /GL /DNDEBUG" -DCMAKE_C_FLAGS_RELEASE="/O2 /Ob2 /Oi /Ot /GL /DNDEBUG" -DCMAKE_EXE_LINKER_FLAGS_RELEASE="/LTCG /OPT:REF /OPT:ICF" -DCMAKE_SHARED_LINKER_FLAGS_RELEASE="/LTCG /OPT:REF /OPT:ICF"
+          )
+
           cmake -S . -B %BUILD_DIR% ^
             -G Ninja ^
             -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
             -DCMAKE_SYSTEM_NAME=Windows ^
-            -DCMAKE_SYSTEM_PROCESSOR=%CMAKE_ARCH%
+            -DCMAKE_SYSTEM_PROCESSOR=%CMAKE_ARCH% ^
+            %PERF_FLAGS%
 
           cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j4
 

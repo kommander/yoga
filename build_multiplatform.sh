@@ -67,10 +67,10 @@ get_performance_flags() {
         "darwin"|"linux")
             case "$arch" in
                 "x86_64")
-                    base_flags="-DCMAKE_C_FLAGS_RELEASE='-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto'"
+                    base_flags="-DCMAKE_C_FLAGS_RELEASE=\"-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto\" -DCMAKE_CXX_FLAGS_RELEASE=\"-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto\""
                     ;;
                 "arm64"|"aarch64")
-                    base_flags="-DCMAKE_C_FLAGS_RELEASE='-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto'"
+                    base_flags="-DCMAKE_C_FLAGS_RELEASE=\"-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto\" -DCMAKE_CXX_FLAGS_RELEASE=\"-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto\""
                     ;;
             esac
             ;;

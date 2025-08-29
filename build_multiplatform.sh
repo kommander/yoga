@@ -60,17 +60,16 @@ get_performance_flags() {
     local platform="$1"
     local arch="$2"
     
-    # Base performance flags for all platforms
-    local base_flags=""
-    
     case "$platform" in
         "darwin"|"linux")
             case "$arch" in
                 "x86_64")
-                    base_flags="-DCMAKE_C_FLAGS_RELEASE=\"-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto\" -DCMAKE_CXX_FLAGS_RELEASE=\"-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto\""
+                    echo "-DCMAKE_C_FLAGS_RELEASE=-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto"
+                    echo "-DCMAKE_CXX_FLAGS_RELEASE=-O3 -DNDEBUG -march=x86-64 -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto"
                     ;;
                 "arm64"|"aarch64")
-                    base_flags="-DCMAKE_C_FLAGS_RELEASE=\"-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto\" -DCMAKE_CXX_FLAGS_RELEASE=\"-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto\""
+                    echo "-DCMAKE_C_FLAGS_RELEASE=-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto"
+                    echo "-DCMAKE_CXX_FLAGS_RELEASE=-O3 -DNDEBUG -march=armv8-a -mtune=generic -fomit-frame-pointer -funroll-loops -ffast-math -flto"
                     ;;
             esac
             ;;
@@ -78,16 +77,20 @@ get_performance_flags() {
             # MSVC optimization flags
             case "$arch" in
                 "x86_64")
-                    base_flags="-DCMAKE_C_FLAGS_RELEASE='/O2 /Ob2 /Oi /Ot /Oy /GL /DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='/O2 /Ob2 /Oi /Ot /Oy /GL /DNDEBUG' -DCMAKE_EXE_LINKER_FLAGS_RELEASE='/LTCG /OPT:REF /OPT:ICF' -DCMAKE_SHARED_LINKER_FLAGS_RELEASE='/LTCG /OPT:REF /OPT:ICF'"
+                    echo "-DCMAKE_C_FLAGS_RELEASE=/O2 /Ob2 /Oi /Ot /Oy /GL /DNDEBUG"
+                    echo "-DCMAKE_CXX_FLAGS_RELEASE=/O2 /Ob2 /Oi /Ot /Oy /GL /DNDEBUG"
+                    echo "-DCMAKE_EXE_LINKER_FLAGS_RELEASE=/LTCG /OPT:REF /OPT:ICF"
+                    echo "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE=/LTCG /OPT:REF /OPT:ICF"
                     ;;
                 "aarch64")
-                    base_flags="-DCMAKE_C_FLAGS_RELEASE='/O2 /Ob2 /Oi /Ot /GL /DNDEBUG' -DCMAKE_CXX_FLAGS_RELEASE='/O2 /Ob2 /Oi /Ot /GL /DNDEBUG' -DCMAKE_EXE_LINKER_FLAGS_RELEASE='/LTCG /OPT:REF /OPT:ICF' -DCMAKE_SHARED_LINKER_FLAGS_RELEASE='/LTCG /OPT:REF /OPT:ICF'"
+                    echo "-DCMAKE_C_FLAGS_RELEASE=/O2 /Ob2 /Oi /Ot /GL /DNDEBUG"
+                    echo "-DCMAKE_CXX_FLAGS_RELEASE=/O2 /Ob2 /Oi /Ot /GL /DNDEBUG"
+                    echo "-DCMAKE_EXE_LINKER_FLAGS_RELEASE=/LTCG /OPT:REF /OPT:ICF"
+                    echo "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE=/LTCG /OPT:REF /OPT:ICF"
                     ;;
             esac
             ;;
     esac
-    
-    echo "$base_flags"
 }
 
 # Get toolchain file for cross-compilation

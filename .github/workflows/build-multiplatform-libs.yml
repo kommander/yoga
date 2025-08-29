@@ -52,8 +52,14 @@ jobs:
           sed -i.tmp "s/add_library(yogacore STATIC/add_library(yogacore ${LIB_TYPE_UPPER}/" yoga/CMakeLists.txt
           rm -f yoga/CMakeLists.txt.tmp
 
-          # Configure and build
-          cmake -S . -B "$BUILD_DIR" \
+          # Configure and build (only yoga lib for cross-arch to avoid test execution issues)
+          if [ "${{ matrix.arch }}" != "x86_64" ]; then
+            CMAKE_SOURCE_DIR="yoga"
+          else
+            CMAKE_SOURCE_DIR="."
+          fi
+
+          cmake -S "$CMAKE_SOURCE_DIR" -B "$BUILD_DIR" \
             -G Ninja \
             -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
             -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \

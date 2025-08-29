@@ -76,3 +76,7 @@ local.properties
 
 # Android Studio
 .idea
+
+# Multi-platform build script outputs
+build_output/
+build_*/

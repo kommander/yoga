@@ -3,6 +3,8 @@ name: Build Multi-Platform Libraries
 on:
   push:
     branches: [main, 'release-*']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       build_type:
@@ -27,10 +29,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup
-        uses: ./.github/actions/setup-cpp
+      - name: Install Ninja (macOS)
+        shell: bash
+        run: brew install ninja
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
         with:
-          toolchain: Clang
+          xcode-version: 14.3.1
 
       - name: Build Library
         run: |
@@ -128,8 +134,14 @@ jobs:
             TOOLCHAIN_ARGS=""
           fi
 
-          # Configure and build
-          cmake -S . -B "$BUILD_DIR" \
+          # Configure and build (only yoga lib for cross-compilation to avoid test execution issues)
+          if [ "${{ matrix.arch }}" = "aarch64" ]; then
+            CMAKE_SOURCE_DIR="yoga"
+          else
+            CMAKE_SOURCE_DIR="."
+          fi
+
+          cmake -S "$CMAKE_SOURCE_DIR" -B "$BUILD_DIR" \
             -G Ninja \
             -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
             $TOOLCHAIN_ARGS
